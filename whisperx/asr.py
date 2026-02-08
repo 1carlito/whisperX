@@ -47,7 +47,7 @@ class WhisperModel(faster_whisper.WhisperModel):
         if options.initial_prompt is not None:
             initial_prompt = " " + options.initial_prompt.strip()
             initial_prompt_tokens = tokenizer.encode(initial_prompt)
-            all_tokens.extend(initial_prompt_tokens)
+            all_tokens.extend(initial_prompt_tokens)           
         previous_tokens = all_tokens[prompt_reset_since:]
         prompt = self.get_prompt(
             tokenizer,
@@ -55,7 +55,7 @@ class WhisperModel(faster_whisper.WhisperModel):
             without_timestamps=options.without_timestamps,
             prefix=options.prefix,
             hotwords=options.hotwords
-        )
+        ) # we have to extend the previous token combined with inital_prompt_tokens outside if condition
 
         encoder_output = self.encode(features)
 
@@ -76,7 +76,7 @@ class WhisperModel(faster_whisper.WhisperModel):
 
         tokens_batch = [x.sequences_ids[0] for x in result]
 
-        def decode_batch(tokens: List[List[int]]) -> str:
+        def decode_batch(tokens: List[List[int]]) -> List[str]:
             res = []
             for tk in tokens:
                 res.append([token for token in tk if token < tokenizer.eot])
@@ -86,7 +86,7 @@ class WhisperModel(faster_whisper.WhisperModel):
         text = decode_batch(tokens_batch)
 
         return text
-
+        
     def encode(self, features: np.ndarray) -> ctranslate2.StorageView:
         # When the model is running on multiple GPUs, the encoder output should be moved
         # to the CPU since we don't know which GPU will handle the next job.
