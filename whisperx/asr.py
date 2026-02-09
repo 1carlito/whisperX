@@ -76,14 +76,14 @@ class WhisperModel(faster_whisper.WhisperModel):
 
         tokens_batch = [x.sequences_ids[0] for x in result]
 
-        def decode_batch(tokens: List[List[int]]) -> List[str]:
+        def decode_batch(tokens: List[List[int]]) -> List[str]:  
             res = []
             for tk in tokens:
                 res.append([token for token in tk if token < tokenizer.eot])
             # text_tokens = [token for token in tokens if token < self.eot]
             return tokenizer.tokenizer.decode_batch(res)
 
-        text = decode_batch(tokens_batch)
+        text = decode_batch(tokens_batch) # list of str
 
         return text
         
