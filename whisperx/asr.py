@@ -55,7 +55,7 @@ class WhisperModel(faster_whisper.WhisperModel):
             without_timestamps=options.without_timestamps,
             prefix=options.prefix,
             hotwords=options.hotwords
-        ) # we have to extend the previous token combined with inital_prompt_tokens outside if condition
+        ) 
 
         encoder_output = self.encode(features)
 
