@@ -169,3 +169,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Benchmark local data & results (keep on server across checkouts)
+benchmarks/data/audio/*
+!benchmarks/data/audio/.gitkeep
+benchmarks/results/*
+!benchmarks/results/.gitkeep

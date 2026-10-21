@@ -1,0 +1,63 @@
+name: GPU PR Benchmark (Manual Gate)
+
+on:
+  # Option 1: Manual button in GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull Request number to benchmark against fixed baseline"
+        required: true
+        type: string
+      align_only:
+        description: "Run alignment-only benchmark using baseline ASR segments"
+        required: false
+        default: false
+        type: boolean
+      post_comment:
+        description: "Post comparison table as a comment on the PR"
+        required: false
+        default: true
+        type: boolean
+
+  # Option 2: Maintainer applies the 'run-benchmark' label to a PR
+  pull_request_target:
+    types: [labeled]
+
+jobs:
+  benchmark:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request_target' && github.event.label.name == 'run-benchmark')
+    runs-on: [self-hosted, gpu]
+    timeout-minutes: 30
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Determine PR number and flags
+        id: params
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+            echo "align_only=${{ inputs.align_only }}" >> "$GITHUB_OUTPUT"
+            echo "post_comment=${{ inputs.post_comment }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            echo "align_only=false" >> "$GITHUB_OUTPUT"
+            echo "post_comment=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run 5-pass GPU benchmark against fixed baseline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WHISPERX_BENCH_ROOT: ${{ env.WHISPERX_BENCH_ROOT || '/home/ubuntu/whisperx-bench' }}
+        run: |
+          ARGS=("pr" "${{ steps.params.outputs.pr_number }}")
+          if [[ "${{ steps.params.outputs.post_comment }}" == "true" ]]; then
+            ARGS+=("--post-comment")
+          fi
+          if [[ "${{ steps.params.outputs.align_only }}" == "true" ]]; then
+            ARGS+=("--align-only")
+          fi
+          bash "$WHISPERX_BENCH_ROOT/benchmarks/compare_pr.sh" "${ARGS[@]}"

@@ -1,0 +1,2 @@
+# Place fixed benchmark audio files (.wav, .mp3, .flac, .m4a) in this directory.
+# Optional: place matching <filename>.txt ground-truth transcripts for Phase 2 WER checks.
