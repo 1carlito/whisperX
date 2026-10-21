@@ -133,25 +133,16 @@ def load_ground_truth_text(gt_path: Path) -> str:
 
 def get_alignment_measures(gt_norm: str, pred_norm: str) -> Dict[str, Any]:
     """
-    Computes WER, CER, IER (in %), and alignment measures using jiwer
-    (identical to whisperX-lab/shared_utils.py & evaluate_pipeline.py).
+    Computes Global WER (in %) using jiwer
+    (identical normalization + WER calculation to whisperX-lab/evaluate_pipeline.py).
     """
     if not gt_norm and not pred_norm:
-        return {"wer": 0.0, "cer": 0.0, "ier": 0.0}
+        return {"wer": 0.0}
     if not gt_norm:
-        return {"wer": 100.0, "cer": 100.0, "ier": 100.0}
+        return {"wer": 100.0}
 
     wer = jiwer.wer(gt_norm, pred_norm) * 100.0
-    cer = jiwer.cer(gt_norm, pred_norm) * 100.0
-    measures = jiwer.process_words(gt_norm, pred_norm)
-    ref_words = max(len(gt_norm.split()), 1)
-    ier = (measures.insertions / ref_words) * 100.0
-
-    return {
-        "wer": round(wer, 4),
-        "cer": round(cer, 4),
-        "ier": round(ier, 4),
-    }
+    return {"wer": round(wer, 4)}
 
 
 def _cuda_sync(device: str) -> None:
@@ -308,8 +299,6 @@ def compute_global_quality(
         return {
             "files_with_ground_truth": 0,
             "global_wer": None,
-            "global_cer": None,
-            "global_ier": None,
             "per_file": {},
         }
 
@@ -320,8 +309,6 @@ def compute_global_quality(
     return {
         "files_with_ground_truth": len(per_file),
         "global_wer": global_measures["wer"],
-        "global_cer": global_measures["cer"],
-        "global_ier": global_measures["ier"],
         "per_file": per_file,
     }
 
@@ -436,11 +423,7 @@ def format_markdown_report(
                     "",
                     "### Baseline Global Accuracy (vs. Ground Truth)",
                     "",
-                    "| Metric | Baseline (%) |",
-                    "| :--- | ---: |",
-                    f"| **Global WER** | `{q['global_wer']:.2f}%` |",
-                    f"| **Global CER** | `{q['global_cer']:.2f}%` |",
-                    f"| **Global IER** | `{q['global_ier']:.2f}%` |",
+                    f"- **Global WER:** `{q['global_wer']:.2f}%`",
                 ]
             )
     else:
@@ -474,34 +457,29 @@ def format_markdown_report(
                 f"| {label} | `{bm:.4f}` | `{pm:.4f}` | `{sign}{delta:.4f}` | **{sign}{pct:.2f}%** | `{pmin:.4f} – {pmax:.4f}` |"
             )
 
-        # Global Accuracy Comparison (Absolute percentage-point difference: PR % - Baseline %)
+        # Global WER Comparison (Absolute percentage-point difference: PR % - Baseline %)
         q_cand = result.get("quality", {})
         q_base = baseline.get("quality", {})
         if q_cand.get("files_with_ground_truth", 0) > 0:
             lines.extend(
                 [
                     "",
-                    "### Global Accuracy Comparison (Absolute Difference vs. Ground Truth)",
+                    "### Global WER Comparison (Absolute Difference vs. Ground Truth)",
                     "",
                     "| Metric | Baseline (%) | PR (%) | Absolute Diff (% pts) |",
                     "| :--- | ---: | ---: | ---: |",
                 ]
             )
-            for m_key, m_label in [
-                ("global_wer", "**Global WER**"),
-                ("global_cer", "Global CER"),
-                ("global_ier", "Global IER"),
-            ]:
-                b_val = q_base.get(m_key)
-                c_val = q_cand.get(m_key)
-                if b_val is not None and c_val is not None:
-                    abs_diff = c_val - b_val
-                    sign = "+" if abs_diff >= 0 else ""
-                    lines.append(
-                        f"| {m_label} | `{b_val:.2f}%` | `{c_val:.2f}%` | **`{sign}{abs_diff:.2f}%`** |"
-                    )
-                elif c_val is not None:
-                    lines.append(f"| {m_label} | `N/A` | `{c_val:.2f}%` | `N/A` |")
+            b_val = q_base.get("global_wer")
+            c_val = q_cand.get("global_wer")
+            if b_val is not None and c_val is not None:
+                abs_diff = c_val - b_val
+                sign = "+" if abs_diff >= 0 else ""
+                lines.append(
+                    f"| **Global WER** | `{b_val:.2f}%` | `{c_val:.2f}%` | **`{sign}{abs_diff:.2f}%`** |"
+                )
+            elif c_val is not None:
+                lines.append(f"| **Global WER** | `N/A` | `{c_val:.2f}%` | `N/A` |")
 
         if output_diff is not None:
             lines.extend(
@@ -755,8 +733,6 @@ def main() -> None:
         if baseline_data and baseline_data.get("quality", {}).get("global_wer") is not None and quality.get("global_wer") is not None:
             result_payload["quality_abs_diff_vs_baseline"] = {
                 "global_wer_abs_diff": round(quality["global_wer"] - baseline_data["quality"]["global_wer"], 4),
-                "global_cer_abs_diff": round(quality["global_cer"] - baseline_data["quality"]["global_cer"], 4),
-                "global_ier_abs_diff": round(quality["global_ier"] - baseline_data["quality"]["global_ier"], 4),
             }
         report_md = format_markdown_report(
             result_payload,

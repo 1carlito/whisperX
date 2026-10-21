@@ -28,11 +28,11 @@ if [[ ! -d "$TARGET_REPO/.git" ]]; then
 fi
 
 install_target() {
-  echo "[Runner] Installing target whisperX from $TARGET_REPO..."
+  echo "[Runner] Installing target whisperX from $TARGET_REPO (plus jiwer, more-itertools, regex)..."
   if command -v uv >/dev/null 2>&1; then
-    uv pip install -e "$TARGET_REPO" --quiet
+    uv pip install -e "$TARGET_REPO" jiwer more-itertools regex --quiet
   else
-    pip install -e "$TARGET_REPO" --quiet
+    pip install -e "$TARGET_REPO" jiwer more-itertools regex --quiet
   fi
 }
 
